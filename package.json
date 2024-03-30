@@ -1,0 +1,26 @@
+{
+  "name": "videodisbackend",
+  "version": "1.0.0",
+  "description": "A video distribution platform similar to youTube",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/navjot369/Vision.git"
+  },
+  "keywords": [
+    "YoutubeClone",
+    "backend",
+    "learning"
+  ],
+  "author": "Navjot Singh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/navjot369/Vision/issues"
+  },
+  "homepage": "https://github.com/navjot369/Vision#readme"
+}

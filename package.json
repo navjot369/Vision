@@ -23,5 +23,8 @@
   "bugs": {
     "url": "https://github.com/navjot369/Vision/issues"
   },
-  "homepage": "https://github.com/navjot369/Vision#readme"
+  "homepage": "https://github.com/navjot369/Vision#readme",
+  "dependencies": {
+    "prettier": "^3.2.5"
+  }
 }

@@ -25,6 +25,11 @@
   },
   "homepage": "https://github.com/navjot369/Vision#readme",
   "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.2.4"
+  },
+  "devDependencies": {
     "prettier": "^3.2.5"
   }
 }

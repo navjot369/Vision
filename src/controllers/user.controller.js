@@ -3,6 +3,24 @@ import {ApiError} from "./../utils/ApiError.js";
 import { User } from "./../models/user.models.js";
 import {uploadOnCloudinary} from "./../utils/cloudinary.js";
 import {ApiResponse} from "./../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
+
+const generateAccessAndRefreshToken = async (userId) => {
+    try {
+        const user  = await User.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshToken = refreshToken;
+        await user.save({validateBeforeSave:false});
+
+        return {accessToken, refreshToken};
+    } catch (error) {
+        console.log(error);
+        throw new ApiError(500, "Something went wrong while generating access or refresh token");
+    }
+}
+
 
 const registerUser = asyncHandler( async (req, res) => {
     const {fullname, email, username, password} = req.body;
@@ -56,4 +74,114 @@ const registerUser = asyncHandler( async (req, res) => {
     );
 })
 
-export {registerUser};
+const loginUser = asyncHandler( async (req, res) => {
+    const {email, username, password} = req.body;
+
+    if(!username && !email) {
+        throw new ApiError(400, "Username and Email is required");
+    }
+
+    const user = await User.findOne({
+        $or: [{email}, {username}]
+    });
+
+    if(!user) {
+        throw new ApiError(401, "User does not exist");
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password);
+
+    if(!isPasswordValid) {
+        throw new ApiError(401, "Invalid Credentials");
+    }
+
+    const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id);
+
+    const loggedUser = await User.findById(user._id).select("-password -refreshToken");
+
+    const cookieOptions = {
+        httpOnly: true,
+        secure: true
+    }
+
+    res.status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json (
+        new ApiResponse(
+            200,
+            {
+                user: loggedUser,
+                accessToken, 
+                refreshToken
+            },
+            "User logged In successfully"
+        )
+)
+})
+
+const logoutUser = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset: {
+                refershToken: 1
+            }
+        },
+        {
+            new: true
+        }
+    );
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200)
+    .clearCookie("accessToken")
+    .clearCookie("refreshToken")
+    .json(new ApiResponse(200, {}, "User Logged Out successfully"));
+})
+
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
+    if (!incomingRefreshToken) {
+        throw new ApiError(401, "Unauthorized request");
+    }
+
+    try {
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    
+        const user = await User.findById(decodedToken?._id);
+    
+        if(!user) {
+            throw new ApiError(401, "Invalid Refresh Token");
+        }
+    
+        if( incomingRefreshToken !== user.refreshToken) {
+            throw new ApiError(401, "Refresh token is expired or used");
+        }
+    
+        const options = {
+            httpOnly:true,
+            secure:true
+        }
+    
+        const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id);
+    
+        return res.status(500)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(200,
+            {accessToken, refreshToken},
+        "Access token refreshed")
+        )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid Refresh Token")
+    }
+})
+
+export {registerUser, loginUser, logoutUser, refreshAccessToken};
